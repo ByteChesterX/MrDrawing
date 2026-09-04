@@ -1,0 +1,6 @@
+server
+server.log
+web/node_modules
+web/dist
+.DS_Store
+*.swp
