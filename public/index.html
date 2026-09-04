@@ -13,10 +13,8 @@ html,body {height:100%;overflow:hidden;background:var(--bg)}
 
 @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
-@keyframes drawLine{0%{stroke-dashoffset:0}100%{stroke-dashoffset:-20}}
 
 #app {height:100%;display:flex;flex-direction:column;background:var(--bg)}
-
 header {padding:24px 32px;background:linear-gradient(135deg,var(--card),var(--bg));backdrop-filter:blur(20px)}
 .header-content {max-width:1200px;margin:0 auto;display:flex;justify-content:space-between;align-items:center}
 .title-area h1 {font-size:32px;font-weight:900;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
@@ -30,25 +28,14 @@ header {padding:24px 32px;background:linear-gradient(135deg,var(--card),var(--bg
 .canvas-wrapper {flex:1;position:relative;background:var(--canvas-bg)}
 #status {position:absolute;top:20px;left:20px;background:rgba(0,0,0,0.7);color:var(--text);padding:12px 20px;border-radius:8px;font-size:14px;font-weight:600;backdrop-filter:blur(5px)}
 #canvas {width:100%;height:calc(100vh - 200px);background:#fff;border-radius:20px;display:block;touch-action:none;max-width:none}
-.canvas-wrapper:hover #cursor-indicator {opacity:1}
-#cursor-indicator {position:absolute;top:10px;right:10px;background:var(--accent);color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:700;opacity:0;animation: pulse 2s ease-in-out infinite}
+#cursor-indicator {position:absolute;top:10px;right:10px;background:var(--accent);color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:700;animation: pulse 2s ease-in-out infinite}
 .chat-panel {width:320px;background:var(--panel);border-radius:20px;padding:24px;display:flex;flex-direction:column;height:fit-max-content}
 .chat-panel h3 {font-size:14px;font-weight:700;color:var(--muted);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #2a2d38}
 .messages {flex:1;overflow-y:auto;gap:8px;padding-right:8px}
 .message {display:flex;gap:8px;max-width:80%}
-.message.own {justify-content:flex-end}
-.avatar {width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#fff}
-.avatar.opponent {background:#7b2cbf}
-.avatar.me {background:#ff1744}
-.message-text {background:var(--card);padding:8px 12px;border-radius:12px;font-size:12px;line-height:1.4}
-.message.own .message-text {border-radius:12px 12px 4px 12px}
 .message .from {font-size:10px;color:var(--muted);margin-bottom:2px;display:block}
-.guess-area {padding:12px;border-top:1px solid #2a2d38;display:flex;gap:8px;align-items:flex-end}
-.guess-input {flex:1;padding:8px 12px;border:0;border-radius:20px;background:var(--card);color:var(--text);font-size:13px;outline:none}
-.guess-btn {padding:8px 16px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:0;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;min-width:80px}
-.guess-btn:disabled {opacity:0.4;cursor:not-allowed}
+.message-text {background:var(--card);padding:8px 12px;border-radius:12px;font-size:12px;line-height:1.4}
 .round-timer {text-align:center;margin-top:16px;font-size:12px;color:var(--muted)}
-.round-timer.warning {color:var(--error);animation:pulse 1s ease-in-out infinite alternate}
 .score {margin-top:auto;text-align:right;font-size:11px;color:var(--muted)}
 
 @media (max-width:480px){.main-area{flex-direction:column-reverse;padding:16px}.chat-panel{width:100%}.messages{padding-right:0}}
@@ -63,7 +50,7 @@ header {padding:24px 32px;background:linear-gradient(135deg,var(--card),var(--bg
         <p>Split-screen çiz & tahmin duellosu</p>
       </div>
       <div class="controls">
-        <button class="btn-start" id="startBtn">HIZLI EŞLEŞ →</button>
+        <button class="btn-start" id="startBtn">Hızlı Eşleş →</button>
       </div>
     </div>
   </header>
@@ -78,9 +65,7 @@ header {padding:24px 32px;background:linear-gradient(135deg,var(--card),var(--bg
 
       <div class="chat-panel">
         <h3>Tahminler</h3>
-        <div class="messages" id="messages">
-          <div style="text-align:center;color:var(--muted);padding:20px;">Henüz eşleşme yok</div>
-        </div>
+        <div class="messages" id="messages"><div style="text-align:center;color:var(--muted);padding:20px;">Henüz eşleşme yok</div></div>
         <div class="guess-area">
           <input type="text" class="guess-input" id="guessInput" placeholder="Tahmin..." disabled>
           <button class="guess-btn" id="guessBtn" disabled>Gönder</button>
@@ -97,10 +82,20 @@ let ws, role='', word='', drawing=false, pts=[], myScore={me:0, opp:0}, correctT
   , startTime=0, timerInterval=0, remaining=90, isDrawer=false, opponentName='Rakip'
 
 function $(s){return document.querySelector(s)}
-function el(s,t='div'){const e=document.createElement(t);e.innerHTML=s;return e}
+function el(s,t){
+  const e=document.createElement(t||'div')
+  e.innerHTML=s
+  return e
+}
 
-function connectWS(){ 
-  ws = new WebSocket('ws://'+location.hostname+':8080/ws') 
+function logMessage(txt,type){
+  const m = el(`<div class="message ${type}"><div class="from">${txt}</div></div>`)
+  $('#messages').append(m)
+  $('#messages').scrollTop = $('#messages').scrollHeight
+}
+
+function connectWS(){
+  ws = new WebSocket('ws://'+location.hostname+':8080/ws')
   ws.onopen = () => ws.send(JSON.stringify({t:'join',name:'Oyuncu'}))
   ws.onmessage = e => handleMsg(JSON.parse(e.data))
   ws.onclose = () => { $('#status').textContent='Bağlantı kesildi'; $('#startBtn').disabled=false; clearInterval(timerInterval) }
@@ -108,85 +103,126 @@ function connectWS(){
 }
 
 function handleMsg(m){
-  switch(m.t){
-    case 'waiting': $('#status').textContent='Rakip bekleniyor...'; break
-    case 'start': 
-      isDrawer=m.role==='drawer'; role=m.role; word=m.word||''; opponentName=m.opponent||'Rakip'
-      $('#status').textContent=isDrawer?'ÇİZ: '+word:'TAHMİN ET!'
-      $('#startBtn').style.display='none'
-      $('#main').style.display='flex'
-      $('#guessInput').disabled=false; $('#guessBtn').disabled=false
-      startTimer()
-      if(!isDrawer){ logMessage('Sana çiziliyor...','opponent') }
-      break
-    case 'draw': drawStroke(m.pts,m.c||'#111',m.w||4); break
-    case 'clear': ctx.clearRect(0,0,c.width,c.height); break
-    case 'guess': logMessage(`${m.from}: ${m.word}`,'opponent'); break
-    case 'correct': 
-      myScore[m.role===?'me':'opp']+=100; $('#score').textContent=`${myScore.me} : ${myScore.opp}`
-      logMessage(`✓ ${m.by} bildi: ${word}`,'correct')
-      clearRound(); break
-    case 'opponent_left': $('#status').textContent='Rakip ayrıldı'; break
+  const t = m.t
+  if(t==='waiting'){ $('#status').textContent='Rakip bekleniyor...' }
+  else if(t==='start'){
+    isDrawer = (m.role==='drawer')
+    role = m.role
+    word = m.word||''
+    opponentName = m.opponent||'Rakip'
+    $('#status').textContent = (isDrawer?'ÇİZ':'TAHMİN ET!') + ' ' + word
+    $('#startBtn').style.display='none'
+    $('#main').style.display='flex'
+    $('#guessInput').disabled=false
+    $('#guessBtn').disabled=false
+    startTimer()
+    if(!isDrawer){ logMessage('Sana çiziliyor...','opponent') }
+  }
+  else if(t==='draw'){ drawStroke(m.pts,m.c||'#111',m.w||4) }
+  else if(t==='clear'){ ctx.clearRect(0,0,c.width,c.height) }
+  else if(t==='guess'){ logMessage(m.from+': '+m.word,'opponent') }
+  else if(t==='correct'){
+    myScore[isDrawer?'me':'opp'] = (myScore[isDrawer?'me':'opp']||0) + 100
+    $('#score').textContent = myScore.me+' : '+myScore.opp
+    logMessage('✓ '+opponentName+' bildi: '+word,'correct')
+    clearRound()
+  }
+  else if(t==='opponent_left'){
+    $('#status').textContent='Rakip ayrıldı'
+    $('#startBtn').style.display='block'
+    $('#main').style.display='none'
   }
 }
 
-function logMessage(txt,type='me'){
-  const m = el(`<div class="message ${type}"><div class="from">${txt}</div></div>`)
-  $('#messages').append(m); $('#messages').scrollTop = $('#messages').scrollHeight
-}
-
 function startTimer(){
-  remaining=90; $('#timer').textContent=`${remaining}s`
-  timerInterval=setInterval(()=>{remaining--; $('#timer').textContent=`${remaining}s`; 
-    if(remaining<=15) $('#timer').classList.add('warning')
-    if(remaining<=0){ clearRound() }}, 1000)
+  remaining=90; $('#timer').textContent=remaining+'s'
   $('#timer').classList.remove('warning')
+  timerInterval=setInterval(()=>{remaining--; $('#timer').textContent=remaining+'s'
+    if(remaining<=15){ $('#timer').classList.add('warning') }
+    if(remaining<=0){ clearRound() }
+  },1000)
 }
 
-function clearRound(){ 
-  clearInterval(timerInterval) 
+function clearRound(){
+  clearInterval(timerInterval)
   ctx.clearRect(0,0,c.width,c.height)
-  $('#guessInput').value=''; $('#guessInput').disabled=true; $('#guessBtn').disabled=true
-  $('#timer').textContent='90s'; $('#timer').classList.remove('warning')
-  $('#status').textContent=isDrawer?'Doğru bildin! Yeni tur...':'Rakip cevap veremedi!'
-  setTimeout(()=>{ $('#status').textContent=isDrawer?'Yeni tur!':'Yeni tur!'; $('#main').style.display='none'; $('#startBtn').style.display='block' }, 2000)
+  $('#guessInput').value=''
+  $('#guessInput').disabled=true
+  $('#guessBtn').disabled=true
+  $('#timer').textContent='90s'
+  $('#timer').classList.remove('warning')
+  $('#status').textContent = isDrawer?'Doğru bildin! Yeni tur...':'Rakip cevap veremedi!'
+  setTimeout(()=>{ $('#status').textContent=isDrawer?'Yeni tur!':'Yeni tur!'; $('#main').style.display='none'; $('#startBtn').style.display='block' },2000)
 }
 
-function drawStroke(pts,c,w){ if(!pts||pts.length<2)return; ctx.strokeStyle=c; ctx.lineWidth=w; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x,pts[i].y); ctx.stroke() }
+function drawStroke(pts,c,w){
+  if(!pts||pts.length<2)return
+  ctx.strokeStyle=c
+  ctx.lineWidth=w||4
+  ctx.lineCap='round'
+  ctx.beginPath()
+  ctx.moveTo(pts[0].x,pts[0].y)
+  for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x,pts[i].y)
+  ctx.stroke()
+}
 
-function pos(e){ const r=c.getBoundingClientRect(); const x=(e.touches?e.touches[0].clientX:e.clientX)-r.left; const y=(e.touches?e.touches[0].clientY:e.clientY)-r.top; const sx=c.width/r.width, sy=c.height/r.height; return {x:x*sx, y:y*sy} }
+function pos(e){
+  const r=c.getBoundingClientRect()
+  const x=(e.touches&&e.touches[0]?e.touches[0].clientX:e.clientX)-r.left
+  const y=(e.touches&&e.touches[0]?e.touches[0].clientY:e.clientY)-r.top
+  const sx=c.width/r.width
+  const sy=c.height/r.height
+  return {x:x*sx, y:y*sy}
+}
 
 function $(s){return document.querySelector(s)}
 
-$('#startBtn').onclick = ()=>{ $('#startBtn').disabled=true; $('#status').textContent='Bağlanılıyor...'; connectWS() }
-
-$('#guessBtn').onclick = ()=>{ 
-  const v=$('#guessInput').value.trim().toLowerCase() 
-  if(!v)return; ws.send(JSON.stringify({t:'guess',word:v})); $('#guessInput').value='' 
+$('#startBtn').onclick = ()=>{
+  $('#startBtn').disabled=true
+  $('#status').textContent='Bağlanılıyor...'
+  connectWS()
 }
 
-$('#guessInput').addEventListener('keydown',e=>{ if(e.key==='Enter')$('#guessBtn').click() })
+$('#guessBtn').onclick = ()=>{
+  const v = $('#guessInput').value.trim().toLowerCase()
+  if(!v)return
+  ws.send(JSON.stringify({t:'guess',word:v}))
+  $('#guessInput').value=''
+}
+
+$('#guessInput').addEventListener('keydown',e=>{
+  if(e.key==='Enter')$('#guessBtn').click()
+})
 
 // Canvas events - sadece çizer ise
-let cur=null
-$('#canvas').addEventListener('pointerdown',e=>{ 
-  if(!isDrawer)return; drawing=true; cur=[pos(e)]; ctx.beginPath(); ctx.moveTo(cur[0].x,cur[0].y) 
+$('#canvas').addEventListener('pointerdown',e=>{
+  if(!isDrawer)return
+  drawing=true
+  pts=[pos(e)]
+  ctx.beginPath()
+  ctx.moveTo(pts[0].x,pts[0].y)
 })
-$('#canvas').addEventListener('pointermove',e=>{ 
-  if(!drawing||!isDrawer)return; const p=pos(e); pts.push(p); ctx.lineTo(p.x,p.y); ctx.stroke() 
+
+$('#canvas').addEventListener('pointermove',e=>{
+  if(!drawing||!isDrawer)return
+  const p=pos(e)
+  pts.push(p)
+  ctx.lineTo(p.x,p.y)
+  ctx.stroke()
 })
-$('#canvas').addEventListener('pointerup',e=>{ 
-  if(!drawing||!isDrawer)return; drawing=false; ws&&ws.send(JSON.stringify({t:'draw',pts})) 
-  // after drawing, auto-guess check could go here
+
+$('#canvas').addEventListener('pointerup',e=>{
+  if(!drawing||!isDrawer)return
+  drawing=false
+  ws&&ws.send(JSON.stringify({t:'draw',pts}))
 })
-$('#canvas').addEventListener('pointerleave',e=>{ if(drawing||!isDrawer)return; drawing=false })
 
- // auto clear after correct or timer end functions already defined
+$('#canvas').addEventListener('pointerleave',e=>{
+  if(drawing||!isDrawer)return
+  drawing=false
+})
 
- // fullscreen toggle
- $('#canvas').style.maxWidth='100vw'; $('#canvas').style.height='calc(100vh - 200px)'
-
- // init
- $('#main').style.display='none'
+// init
+$('#main').style.display='none'
 </script>
 </body></html>
