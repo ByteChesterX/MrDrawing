@@ -1,14 +1,80 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>web</title>
-    <script type="module" crossorigin src="/assets/index-COvLFU0z.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DcF0xSAi.css">
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
-</html>
+<!doctype html><html lang="tr"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MrDrawing</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+body{background:linear-gradient(135deg,#0f0f23,#1a1a3e);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+#wrapper{max-width:960px;width:100%}
+#header{background:rgba(255,255,255,.05);backdrop-filter:blur(10px);border-radius:16px;padding:24px;margin-bottom:24px}
+#header h1{color:#e94a4a;margin-bottom:8px;font-size:24px}
+#header p{color:#888;font-size:14px}
+#area{display:flex;gap:12px;background:rgba(255,255,255,.03);border-radius:16px;padding:20px}
+#canvas-col{flex:1;min-width:0;position:relative}
+#chat-col{flex:0 0 320px;width:320px;max-width:320px}
+canvas{width:100%;height:560px;background:#fff;border-radius:12px;display:block;touch-action:none}
+#status{position:absolute;top:12px;left:12px;background:rgba(0,0,0,.7);color:#fff;padding:6px 10px;border-radius:6px;font-weight:bold;font-size:12px}
+#controls{background:#111;border-radius:12px;padding:16px;margin-top:12px}
+#controls label{color:#ddd;font-size:12px;display:block;margin-bottom:4px}
+#color-picker{width:100%}
+#clear-btn{width:100%;margin-top:8px;padding:8px;background:#e94a4a;color:#fff;border:0;border-radius:6px;font-weight:bold;cursor:pointer}
+#guess-area{margin-top:12px;padding:12px;background:#222;border-radius:10px}
+#guess-input{width:100%;padding:8px;margin-bottom:8px;border:0;border-radius:6px;background:#333;color:#fff}
+#guess-btn{padding:8px 16px;background:#4a90e2;color:#fff;border:0;border-radius:6px}
+#log{height:180px;overflow:auto;background:#111;padding:8px;border-radius:8px;color:#aaa;font-size:12px;margin-top:8px}
+#scores{text-align:right;font-size:12;color:#888;margin-top:8px}
+#hint{text-align:center;margin:8px 0;font-size:11px;color:#666}
+</style></head><body>
+<div id="wrapper">
+  <div id="header">
+    <h1>🖌️ MrDrawing</h1>
+    <p>Split-screen çiz & tahmin duellosu • E2.Micro optimize</p>
+  </div>
+  <div id="area">
+    <div id="canvas-col">
+      <canvas id="c" width="700" height="520"></canvas>
+      <div id="status">Bağlanılıyor...</div>
+    </div>
+    <div id="chat-col">
+      <div id="controls">
+        <label>İsim</label><input id="name" value="Oyuncu" type="text">
+        <button id="join">HIZLI EŞLEŞ →</button>
+        <div id="hint">60sn tur • 90sn sınır</div>
+      </div>
+      <div id="clear-btn">Temizle (çizer)</div>
+      <div id="guess-area">
+        <label>Tahmin</label>
+        <input id="guess" type="text" placeholder="Tahmin...">
+        <button id="guess-btn">Gönder</button>
+      </div>
+      <div id="log"></div>
+      <div id="scores">0 : 0</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let ws,role='',word='',drawing=false,pts=[],myName='Oyuncu';
+const c=document.getElementById('c'),ctx=c.getContext('2d'),statusEl=document.getElementById('status');
+const nameEl=document.getElementById('name'),joinBtn=document.getElementById('join');
+const colorEl=document.getElementById('color-picker')||{value:'#111111'};
+
+function log(m){ const L=document.getElementById('log'); L.innerHTML='<div>'+m+'</div>'+L.innerHTML; L.scrollTop=L.scrollHeight; }
+
+function connect(){ myName=nameEl.value.trim()||'Oyuncu'; ws=new WebSocket('ws://'+location.hostname+':8080/ws'); ws.onopen=()=> ws.send(JSON.stringify({t:'join',name:myName})); ws.onmessage=e=>{ const m=JSON.parse(e.data); if(m.t==='waiting'){ statusEl.textContent='Rakip bekleniyor...'; return; } if(m.t==='start'){ role=m.role; word=m.word||''; statusEl.textContent=role==='drawer'?'ÇİZ: '+word:'TAHMİN ET!'; log('Eşleşti vs '+m.opponent+' — rol:'+role); document.getElementById('scores').textContent=JSON.stringify(m.scores); } if(m.t==='draw'){ drawStroke(m.pts,m.c||'#111111',m.w||4); } if(m.t==='clear'){ ctx.clearRect(0,0,c.width,c.height); } if(m.t==='guess'){ log(m.from+': '+m.word); } if(m.t==='correct'){ log('✓ '+m.by+' bildi: '+m.word); statusEl.textContent='Doğru! Yeni tur...'; document.getElementById('scores').textContent=JSON.stringify(m.scores); } if(m.t==='opponent_left'){ statusEl.textContent='Rakip ayrıldı'; role=''; word=''; } }; ws.onclose=()=>{ statusEl.textContent='Bağlantı kesildi'; log('Sunucu yok'); }; ws.onerror=()=>log('WebSocket hata'); }
+
+function drawStroke(pts,c,w){ if(!pts||pts.length<2)return; ctx.strokeStyle=c; ctx.lineWidth=w||4; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x,pts[i].y); ctx.stroke(); }
+
+function pos(e){ const r=c.getBoundingClientRect(); const x=(e.touches?e.touches[0].clientX:e.clientX)-r.left; const y=(e.touches?e.touches[0].clientY:e.clientY)-r.top; const sx=c.width/r.width, sy=c.height/r.height; return {x:x*sx, y:y*sy} };
+
+c.addEventListener('pointerdown',e=>{ if(role!=='drawer')return; drawing=true; pts=[pos(e)]; c.setPointerCapture(e.pointerId); });
+c.addEventListener('pointermove',e=>{ if(!drawing)return; const p=pos(e); const prev=pts[pts.length-1]; pts.push(p); ctx.strokeStyle=colorEl.value; ctx.lineWidth=4; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(prev.x,prev.y); ctx.lineTo(p.x,p.y); ctx.stroke(); });
+c.addEventListener('pointerup',e=>{ if(!drawing)return; drawing=false; ws&&ws.send(JSON.stringify({t:'draw',pts})) });
+
+joinBtn.onclick=connect;
+
+document.getElementById('clear-btn').onclick=()=>{ ctx.clearRect(0,0,c.width,c.height); ws&&ws.send(JSON.stringify({t:'clear'})); };
+
+document.getElementById('guess-btn').onclick=()=>{ const v=document.getElementById('guess').value.trim().toLowerCase(); if(!v)return; ws.send(JSON.stringify({t:'guess',word:v})); document.getElementById('guess').value=''; };
+document.getElementById('guess').addEventListener('keydown',e=>{ if(e.key==='Enter')document.getElementById('guess-btn').click(); });
+</script></body></html>
